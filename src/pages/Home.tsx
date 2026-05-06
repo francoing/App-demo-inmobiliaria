@@ -1,10 +1,48 @@
-import { Search, MapPin, Home as HomeIcon, Wallet, ShieldCheck, Map, ArrowRight, BarChart3 } from "lucide-react";
-import { PROPERTIES } from "../data";
+import { useEffect, useState, FormEvent } from "react";
+import { Search, MapPin, Home as HomeIcon, Wallet, ShieldCheck, Map, ArrowRight, BarChart3, Loader2 } from "lucide-react";
 import { PropertyCard } from "../components/PropertyCard";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
+import { propertyService } from "../services/propertyService";
+import { Property } from "../types";
+import { seed } from "../lib/seedData";
 
 export default function HomePage() {
+  const [featured, setFeatured] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [location, setLocation] = useState("");
+  const [operation, setOperation] = useState("Comprar Propiedad");
+  const [priceRange, setPriceRange] = useState("$500k - $1M");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        let data = await propertyService.getFeatured();
+        if (data && data.length === 0) {
+          // One-time seed for demo
+          await seed();
+          data = await propertyService.getFeatured();
+        }
+        setFeatured(data || []);
+      } catch (error) {
+        console.error("Home fetch error:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault();
+    const queryParams = new URLSearchParams();
+    if (location) queryParams.set("location", location);
+    queryParams.set("operation", operation);
+    queryParams.set("priceRange", priceRange);
+    navigate(`/search?${queryParams.toString()}`);
+  };
+
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
@@ -40,6 +78,8 @@ export default function HomePage() {
                   className="w-full border-none p-0 focus:ring-0 text-slate-900 placeholder:text-slate-400 text-sm font-medium bg-transparent" 
                   placeholder="¿Dónde quieres vivir?" 
                   type="text" 
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
                 />
               </div>
             </div>
@@ -47,7 +87,11 @@ export default function HomePage() {
               <HomeIcon className="text-secondary w-5 h-5" />
               <div className="text-left w-full">
                 <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary">Operación</label>
-                <select className="w-full border-none p-0 focus:ring-0 text-slate-900 text-sm font-medium bg-transparent appearance-none">
+                <select 
+                  className="w-full border-none p-0 focus:ring-0 text-slate-900 text-sm font-medium bg-transparent appearance-none"
+                  value={operation}
+                  onChange={(e) => setOperation(e.target.value)}
+                >
                   <option>Comprar Propiedad</option>
                   <option>Alquilar Propiedad</option>
                 </select>
@@ -57,20 +101,24 @@ export default function HomePage() {
               <Wallet className="text-secondary w-5 h-5" />
               <div className="text-left w-full">
                 <label className="block text-[10px] uppercase tracking-wider font-bold text-secondary">Rango de Precio</label>
-                <select className="w-full border-none p-0 focus:ring-0 text-slate-900 text-sm font-medium bg-transparent appearance-none">
+                <select 
+                  className="w-full border-none p-0 focus:ring-0 text-slate-900 text-sm font-medium bg-transparent appearance-none"
+                  value={priceRange}
+                  onChange={(e) => setPriceRange(e.target.value)}
+                >
                   <option>$500k - $1M</option>
                   <option>$1M - $5M</option>
                   <option>$5M+</option>
                 </select>
               </div>
             </div>
-            <Link 
-              to="/search"
+            <button 
+              onClick={handleSearch}
               className="bg-primary text-white px-10 py-4 rounded-xl font-bold hover:bg-primary-light transition-all flex items-center justify-center gap-2"
             >
               <Search className="w-5 h-5" />
               Buscar
-            </Link>
+            </button>
           </motion.div>
         </div>
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-100/30 rounded-full blur-3xl"></div>
@@ -88,11 +136,22 @@ export default function HomePage() {
             Ver todas las propiedades
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {PROPERTIES.slice(0, 3).map((prop) => (
-            <PropertyCard key={prop.id} property={prop} />
-          ))}
-        </div>
+        
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featured.length > 0 ? (
+              featured.map((prop) => (
+                <PropertyCard key={prop.id} property={prop} />
+              ))
+            ) : (
+              <p className="text-center col-span-full py-12 text-secondary font-medium italic">No se encontraron propiedades destacadas.</p>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Value Proposition / Bento */}
@@ -120,9 +179,9 @@ export default function HomePage() {
               <ShieldCheck className="w-12 h-12 mb-6" />
               <h3 className="text-2xl font-bold mb-4">Solo Agentes Certificados</h3>
               <p className="text-blue-100/80 mb-8">Cada profesional en nuestra plataforma es evaluado por su experiencia, conocimiento local e integridad.</p>
-              <button className="bg-white text-primary px-6 py-3 rounded-xl font-bold hover:bg-slate-100 transition-colors w-full">
+              <Link to="/register" className="bg-white text-primary px-6 py-3 rounded-xl font-bold hover:bg-slate-100 transition-colors w-full text-center">
                 Postular como Agente
-              </button>
+              </Link>
             </div>
           </div>
         </div>

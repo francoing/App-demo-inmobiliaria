@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user with roles (Admin or Publicador)",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "publicador"] },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role", "status"]
+    },
+    "Property": {
+      "title": "Property",
+      "description": "Real estate property listing",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "price": { "type": "number" },
+        "location": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "type": { "type": "string", "enum": ["Casa", "Apartamento", "Condominio", "Villa"] },
+        "description": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "beds": { "type": "number" },
+        "baths": { "type": "number" },
+        "sqft": { "type": "number" },
+        "status": { "type": "string", "enum": ["En Venta", "En Alquiler", "Exclusivo", "Nueva Propiedad", "Vendido", "Inactivo"] },
+        "isFeatured": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "price", "location", "type", "description"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Inquiry about a property",
+      "type": "object",
+      "properties": {
+        "propertyId": { "type": "string" },
+        "publisherId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["propertyId", "publisherId", "name", "email", "message"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "Monetization plan",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "maxProperties": { "type": "number" },
+        "price": { "type": "number" }
+      },
+      "required": ["name", "maxProperties"]
+    },
+    "UserPlan": {
+      "title": "UserPlan",
+      "description": "Assignment of a plan to a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "planId": { "type": "string" },
+        "active": { "type": "boolean" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "planId", "active"]
+    }
+  },
+  "firestore": {
+    "users": { "schema": "User", "description": "Users collection" },
+    "properties": { "schema": "Property", "description": "Global properties collection" },
+    "leads": { "schema": "Lead", "description": "Inquiries collection" },
+    "plans": { "schema": "Plan", "description": "Available subscription plans" },
+    "userPlans": { "schema": "UserPlan", "description": "Link between users and plans" }
+  }
+}

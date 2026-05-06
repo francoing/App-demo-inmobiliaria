@@ -1,0 +1,137 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'role', 'status']) &&
+             data.keys().size() >= 4 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.email == request.auth.token.email &&
+             data.role in ['admin', 'publicador'] &&
+             data.status in ['active', 'inactive'];
+    }
+
+    function isValidProperty(data) {
+      return data.keys().hasAll(['userId', 'title', 'price', 'location', 'type', 'description']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.price is number && data.price >= 0 &&
+             data.type in ['Casa', 'Apartamento', 'Condominio', 'Villa'] &&
+             data.description is string && data.description.size() <= 5000 &&
+             (!data.keys().contains('status') || data.status in ['En Venta', 'En Alquiler', 'Exclusivo', 'Nueva Propiedad', 'Vendido', 'Inactivo']);
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['propertyId', 'publisherId', 'name', 'email', 'message']) &&
+             isValidId(data.propertyId) &&
+             isValidId(data.publisherId) &&
+             data.name is string && data.name.size() > 0 &&
+             data.email is string && data.email.size() > 0 &&
+             data.message is string && data.message.size() > 0;
+    }
+
+    // --- Collections ---
+
+    // Users
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      // Only admins can list all users
+      allow list: if isAdmin();
+      // Users can create their own profile during registration
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      // Users can update their own info (limited fields) OR Admin can update anything
+      allow update: if (isAdmin()) || 
+                      (isOwner(userId) && 
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name']) &&
+                       isValidUser(incoming()));
+    }
+
+    // Properties
+    match /properties/{propId} {
+      // Anyone can read active properties
+      allow get: if true;
+      allow list: if true; 
+      
+      allow create: if isEmailVerified() && isValidProperty(incoming()) && 
+                    // Verify the user has an active plan (Master Gate example)
+                    exists(/databases/$(database)/documents/userPlans/$(request.auth.uid));
+      
+      allow update: if (isAdmin()) || (
+        isOwner(existing().userId) && 
+        isValidProperty(incoming()) &&
+        (
+          // Action: Edit details
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'price', 'description', 'images', 'beds', 'baths', 'sqft', 'type', 'location', 'status']) ||
+          // Action: Toggle Featured (Only if admin, but here we check owners for basics)
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['isFeatured']))
+        )
+      );
+
+      allow delete: if isAdmin() || isOwner(existing().userId);
+    }
+
+    // Leads
+    match /leads/{leadId} {
+      // Anyone can create a lead
+      allow create: if isValidLead(incoming()) &&
+                    exists(/databases/$(database)/documents/properties/$(incoming().propertyId));
+      
+      // Only the publisher or admin can read their leads
+      allow get, list: if isSignedIn() && (isAdmin() || request.auth.uid == resource.data.publisherId);
+      
+      // Leads should probably be immutable or admin-only once sent
+      allow update, delete: if isAdmin();
+    }
+
+    // Plans (Admin only)
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // UserPlans (Admin managed, or read-only for user)
+    match /userPlans/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

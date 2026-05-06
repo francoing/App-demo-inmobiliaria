@@ -1,5 +1,6 @@
 export interface Property {
   id: string;
+  userId: string;
   title: string;
   price: number;
   location: string;
@@ -9,16 +10,22 @@ export interface Property {
   baths: number;
   sqft: number;
   type: 'Casa' | 'Apartamento' | 'Condominio' | 'Villa';
-  status: 'En Venta' | 'En Alquiler' | 'Exclusivo' | 'Nueva Propiedad';
+  status: 'En Venta' | 'En Alquiler' | 'Vendido' | 'Inactivo';
   description: string;
   images: string[];
   highlights: string[];
-  createdAt: string;
+  isFeatured: boolean;
+  createdAt: any;
+  updatedAt?: any;
 }
 
-export interface Agent {
+export interface UserProfile {
+  id: string;
   name: string;
-  role: string;
-  image: string;
-  responseTime: string;
+  email: string;
+  role: 'admin' | 'publicador';
+  status: 'active' | 'inactive';
+  planId: string;
+  image?: string;
+  createdAt: any;
 }

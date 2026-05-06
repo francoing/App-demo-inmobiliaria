@@ -1,13 +1,16 @@
-import { Link, useLocation } from "react-router-dom";
-import { Search, Heart, User, Globe, Home, ChevronDown, Menu } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Search, Heart, User, Globe, Home, ChevronDown, Menu, LogOut, LayoutDashboard } from "lucide-react";
 import { cn } from "@/src/lib/utils";
-import type { ReactNode } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { signOut } from "firebase/auth";
+import { auth } from "../lib/firebase";
+import { ReactNode, cloneElement } from "react";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith('/admin');
+  const isAdminPath = location.pathname.startsWith('/admin');
 
-  if (isAdmin) {
+  if (isAdminPath) {
     return <AdminLayout>{children}</AdminLayout>;
   }
 
@@ -22,27 +25,33 @@ export default function Layout({ children }: { children: ReactNode }) {
 
 function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   
   const navItems = [
     { name: 'Comprar', path: '/' },
-    { name: 'Alquilar', path: '/search' },
-    { name: 'Vender', path: '/contact' },
-    { name: 'Agentes', path: '/contact' },
+    { name: 'Buscar', path: '/search' },
+    { name: 'Contacto', path: '/contact' },
   ];
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate('/');
+  };
 
   return (
     <header className="bg-white/80 backdrop-blur-md fixed top-0 w-full z-50 border-b border-slate-200 shadow-sm">
       <div className="flex justify-between items-center px-6 lg:px-12 h-20 max-w-7xl mx-auto w-full">
-        <Link to="/" className="text-xl font-bold tracking-tighter text-primary">
-          EstatePro
+        <Link to="/" className="text-2xl font-black tracking-tighter text-primary">
+          Estate<span className="text-primary-light">Pro</span>
         </Link>
-        <nav className="hidden md:flex items-center space-x-8">
+        <nav className="hidden md:flex items-center space-x-10">
           {navItems.map((item) => (
             <Link
               key={item.name}
               to={item.path}
               className={cn(
-                "font-medium text-sm transition-colors pb-1 border-b-2 hover:text-primary",
+                "font-bold text-sm tracking-wide transition-all pb-1 border-b-4 hover:text-primary",
                 location.pathname === item.path 
                   ? "text-primary border-primary" 
                   : "text-secondary border-transparent"
@@ -52,16 +61,33 @@ function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center space-x-4">
-          <Link to="/login" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
-            Iniciar Sesión
-          </Link>
-          <Link 
-            to="/admin" 
-            className="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary-light transition-all active:scale-95"
-          >
-            Publicar Propiedad
-          </Link>
+        <div className="flex items-center space-x-6">
+          {user ? (
+            <div className="flex items-center gap-4">
+              <Link to="/admin" className="text-secondary hover:text-primary transition-colors flex items-center gap-2 font-bold text-sm">
+                <LayoutDashboard className="w-5 h-5" /> Tablero
+              </Link>
+              <button 
+                onClick={handleLogout}
+                className="text-slate-400 hover:text-red-500 transition-colors p-2"
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link to="/login" className="text-sm font-bold text-secondary hover:text-primary transition-all">
+                Iniciar Sesión
+              </Link>
+              <Link 
+                to="/register" 
+                className="bg-primary text-white px-6 py-3 rounded-xl text-sm font-black hover:bg-primary-light transition-all active:scale-95 shadow-lg shadow-primary/20"
+              >
+                Registrarse
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
@@ -71,74 +97,91 @@ function Header() {
 function Footer() {
   return (
     <footer className="w-full border-t border-slate-200 bg-slate-50 mt-20">
-      <div className="flex flex-col md:flex-row justify-between items-center px-8 py-12 max-w-7xl mx-auto w-full">
-        <div className="mb-8 md:mb-0 text-center md:text-left">
-          <div className="text-xl font-bold tracking-tighter text-primary mb-2">EstatePro</div>
-          <p className="text-xs text-secondary">© 2024 EstatePro Marketplace. Todos los derechos reservados.</p>
+      <div className="flex flex-col md:flex-row justify-between items-center px-12 py-16 max-w-7xl mx-auto w-full gap-8">
+        <div className="text-center md:text-left">
+          <div className="text-2xl font-black tracking-tighter text-primary mb-4">Estate<span className="text-primary-light">Pro</span></div>
+          <p className="text-xs text-secondary font-medium">© 2024 EstatePro Premium. Elevando el estándar inmobiliario.</p>
         </div>
-        <div className="flex flex-wrap justify-center gap-8 text-xs text-secondary">
-          <a href="#" className="hover:text-primary transition-colors">Política de Privacidad</a>
-          <a href="#" className="hover:text-primary transition-colors">Términos de Servicio</a>
-          <a href="#" className="hover:text-primary transition-colors">Política de Cookies</a>
-          <a href="#" className="hover:text-primary transition-colors">Contacto</a>
+        <div className="flex flex-wrap justify-center gap-12 text-xs font-bold text-secondary uppercase tracking-widest">
+          <a href="#" className="hover:text-primary transition-colors">Privacidad</a>
+          <a href="#" className="hover:text-primary transition-colors">Términos</a>
+          <a href="#" className="hover:text-primary transition-colors">Agentes</a>
+          <a href="#" className="hover:text-primary transition-colors">Ayuda</a>
         </div>
-        <div className="flex gap-4 mt-8 md:mt-0">
-          <div className="p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-             <Globe className="w-5 h-5 text-primary" />
-          </div>
-          <div className="p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-             <Home className="w-5 h-5 text-primary" />
-          </div>
+        <div className="flex gap-4">
+          <SocialIcon icon={<Globe />} />
+          <SocialIcon icon={<Home />} />
         </div>
       </div>
     </footer>
   );
 }
 
-function AdminLayout({ children }: { children: ReactNode }) {
+function SocialIcon({ icon }: { icon: any }) {
   return (
-    <div className="flex min-h-screen bg-slate-50">
-       <aside className="h-screen w-64 border-r border-slate-200 bg-white flex flex-col py-6 space-y-2 sticky top-0 hidden lg:flex">
-        <div className="px-6 mb-8">
-          <Link to="/" className="text-lg font-black text-primary tracking-tighter block">EstatePro</Link>
-          <p className="text-[10px] uppercase tracking-widest text-secondary font-bold mt-1">Panel de Administración</p>
-        </div>
-        <nav className="flex-1 space-y-1">
-          <SidebarLink icon={<Home className="w-4 h-4" />} label="Tablero" />
-          <SidebarLink icon={<Search className="w-4 h-4" />} label="Propiedades" active />
-          <SidebarLink icon={<User className="w-4 h-4" />} label="Prospectos" />
-          <SidebarLink icon={<Globe className="w-4 h-4" />} label="Analíticas" />
-        </nav>
-        <div className="px-6 pt-6 border-t border-slate-100">
-           <div className="flex items-center space-x-3 mb-6">
-            <img 
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100" 
-              className="w-10 h-10 rounded-full object-cover"
-              alt="Profile"
-            />
-            <div>
-              <p className="text-sm font-bold">Admin User</p>
-              <p className="text-xs text-secondary">Manager</p>
-            </div>
-          </div>
-          <button className="w-full py-3 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-light transition-all shadow-md">
-            Agregar Propiedad
-          </button>
-        </div>
-      </aside>
-      <main className="flex-1 p-6 md:p-10">{children}</main>
+    <div className="p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-primary hover:text-white transition-all hover:-translate-y-1 shadow-sm">
+       {cloneElement(icon as any, { className: "w-5 h-5" })}
     </div>
   );
 }
 
-function SidebarLink({ icon, label, active = false }: { icon: ReactNode, label: string, active?: boolean }) {
+function AdminLayout({ children }: { children: ReactNode }) {
+  const { user, role } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate('/');
+  };
+
   return (
-    <a className={cn(
-      "flex items-center px-6 py-3 font-semibold transition-all mx-2 rounded-lg text-sm",
-      active ? "bg-slate-50 text-primary" : "text-secondary hover:bg-slate-100"
-    )}>
-      <span className="mr-3">{icon}</span>
+    <div className="flex min-h-screen bg-slate-50">
+       <aside className="h-screen w-72 border-r border-slate-200 bg-white flex flex-col py-8 space-y-4 sticky top-0 hidden lg:flex shadow-2xl">
+        <div className="px-10 mb-12">
+          <Link to="/" className="text-2xl font-black text-primary tracking-tighter block mb-1">Estate<span className="text-primary-light">Pro</span></Link>
+          <div className="h-1 w-12 bg-primary rounded-full"></div>
+        </div>
+        <nav className="flex-1 px-4 space-y-2">
+          <SidebarLink to="/admin" icon={<LayoutDashboard />} label="Resumen" active />
+          <SidebarLink to="/search" icon={<Search />} label="Marketplace" />
+          <SidebarLink to="/admin" icon={<User />} label="Perfil" />
+        </nav>
+        <div className="px-6 pt-6 border-t border-slate-100 mt-auto">
+           <div className="flex items-center gap-4 mb-8 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-lg">
+              {user?.displayName?.charAt(0) || "U"}
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-sm font-black text-primary truncate">{user?.displayName || "Usuario Pro"}</p>
+              <p className="text-[10px] text-secondary font-black uppercase tracking-widest">{role}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="w-full py-4 text-slate-400 hover:text-red-500 font-bold text-sm flex items-center justify-center gap-2 hover:bg-red-50 rounded-xl transition-all"
+          >
+            <LogOut className="w-5 h-5" /> Salir de sesión
+          </button>
+        </div>
+      </aside>
+      <main className="flex-1 min-w-0">{children}</main>
+    </div>
+  );
+}
+
+function SidebarLink({ icon, label, to, active = false }: { icon: any, label: string, to: string, active?: boolean }) {
+  return (
+    <Link 
+      to={to}
+      className={cn(
+        "flex items-center gap-4 px-6 py-4 font-bold transition-all rounded-2xl text-sm",
+        active 
+          ? "bg-primary text-white shadow-xl shadow-primary/20 translate-x-2" 
+          : "text-secondary hover:text-primary hover:bg-slate-50"
+      )}
+    >
+      {cloneElement(icon as any, { className: "w-5 h-5" })}
       {label}
-    </a>
+    </Link>
   );
 }
